@@ -1,4 +1,4 @@
-name: Build crDroid A51 on Crave
+name: Build crDroid for Galaxy A51
 
 on:
   workflow_dispatch:
@@ -12,17 +12,16 @@ jobs:
 
       - name: Setup Crave CLI
         run: |
-          mkdir -p ~/.bin
-          curl -sL https://raw.githubusercontent.com/accupara/crave/main/get_crave.sh | bash
+          curl -sL https://raw.githubusercontent.com/accupara/crave/main/crave -o crave
+          chmod +x crave
           sudo mv crave /usr/local/bin/crave
-          chmod +x /usr/local/bin/crave
 
-      - name: Configure Crave Auth & Link Project
+      - name: Authenticate Crave & Link Dashboard Project
         run: |
           echo "${{ secrets.CRAVE_CONF }}" > $HOME/crave.conf
           git init
           git remote add origin https://github.com/accupara/los23.2.git
 
-      - name: Trigger Crave Cloud Build
+      - name: Build crDroid for Galaxy A51
         run: |
-          crave run --no-patch -- "rm -rf .repo/local_manifests && repo init -u https://github.com/crdroidandroid/android.git -b 17.0 --git-lfs && git clone https://github.com/Exynos9611Development/local_manifests.git -b lineage-23.2 .repo/local_manifests && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
+          crave run --no-patch -- "rm -rf .repo/local_manifests && repo init -u https://github.com/crdroidandroid/android.git -b 11.0 --git-lfs && git clone https://github.com/Exynos9611Development/local_manifests.git -b lineage-23.2 .repo/local_manifests && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
