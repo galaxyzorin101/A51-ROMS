@@ -10,12 +10,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup & Verify Crave CLI
+      - name: Setup Crave CLI
         run: |
           sudo mkdir -p /usr/local/bin
           curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
           
-          # Move binary from wherever get_crave saved it straight to system PATH
           for loc in $HOME/bin/crave $HOME/.bin/crave ./crave; do
             if [ -f "$loc" ]; then
               sudo cp "$loc" /usr/local/bin/crave
@@ -24,18 +23,22 @@ jobs:
           done
           
           sudo chmod +x /usr/local/bin/crave
-          
-          # Verify binary execution in same step
-          crave version || crave --help
 
-      - name: Authenticate Crave & Link Dashboard Project
+      - name: Authenticate & Build crDroid
         run: |
+          # Write auth token to local workspace root and HOME directory
+          echo "${{ secrets.CRAVE_CONF }}" > crave.conf
           echo "${{ secrets.CRAVE_CONF }}" > $HOME/crave.conf
+          
+          # Check if secret exists
+          if [ ! -s crave.conf ]; then
+            echo "ERROR: CRAVE_CONF secret is empty! Check GitHub Repository Settings -> Secrets."
+            exit 1
+          fi
+
           git remote remove origin || true
           git remote add origin https://github.com/accupara/los23.2.git
 
-      - name: Sync Source & Build crDroid
-        run: |
           crave run --no-patch -- "rm -rf .repo/local_manifests && repo init -u https://github.com/crdroidandroid/android.git -b 17.0 --git-lfs && git clone https://github.com/Exynos9611Development/local_manifests.git -b lineage-23.2 .repo/local_manifests && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
 
       - name: Pull ROM Zip from Crave
