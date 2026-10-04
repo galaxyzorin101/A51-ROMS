@@ -10,13 +10,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Crave CLI
+      - name: Setup & Verify Crave CLI
         run: |
+          sudo mkdir -p /usr/local/bin
           curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
-          echo "$HOME/bin" >> $GITHUB_PATH
-
-      - name: Verify Crave Installation
-        run: |
+          
+          # Move binary from wherever get_crave saved it straight to system PATH
+          for loc in $HOME/bin/crave $HOME/.bin/crave ./crave; do
+            if [ -f "$loc" ]; then
+              sudo cp "$loc" /usr/local/bin/crave
+              break
+            fi
+          done
+          
+          sudo chmod +x /usr/local/bin/crave
+          
+          # Verify binary execution in same step
           crave version || crave --help
 
       - name: Authenticate Crave & Link Dashboard Project
