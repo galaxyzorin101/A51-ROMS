@@ -12,7 +12,7 @@ jobs:
 
       - name: Setup Crave CLI
         run: |
-          curl -sL https://raw.githubusercontent.com/accupara/crave/main/crave -o crave
+          curl -sL https://raw.githubusercontent.com/accupara/crave/master/crave -o crave || curl -sL https://raw.githubusercontent.com/accupara/crave/main/crave -o crave
           chmod +x crave
           sudo mv crave /usr/local/bin/crave
 
