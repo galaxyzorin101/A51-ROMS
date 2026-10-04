@@ -19,9 +19,19 @@ jobs:
       - name: Authenticate Crave & Link Dashboard Project
         run: |
           echo "${{ secrets.CRAVE_CONF }}" > $HOME/crave.conf
-          git init
+          git remote remove origin || true
           git remote add origin https://github.com/accupara/los23.2.git
 
-      - name: Build crDroid for Galaxy A51
+      - name: Sync Source & Build crDroid
         run: |
-          crave run --no-patch -- "rm -rf .repo/local_manifests && repo init -u https://github.com/crdroidandroid/android.git -b 11.0 --git-lfs && git clone https://github.com/Exynos9611Development/local_manifests.git -b lineage-23.2 .repo/local_manifests && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
+          crave run --no-patch -- "rm -rf .repo/local_manifests && repo init -u https://github.com/crdroidandroid/android.git -b 17.0 --git-lfs && git clone https://github.com/Exynos9611Development/local_manifests.git -b lineage-23.2 .repo/local_manifests && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
+
+      - name: Pull ROM Zip from Crave
+        run: |
+          crave pull out/target/product/a51/*.zip .
+
+      - name: Upload ROM Artifact to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: crDroid-Galaxy-A51
+          path: "*.zip"
