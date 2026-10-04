@@ -12,18 +12,8 @@ jobs:
 
       - name: Setup Crave CLI
         run: |
-          curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh -o get_crave.sh
-          if grep -q "404" get_crave.sh; then
-            curl -sL https://raw.githubusercontent.com/accupara/crave/main/get_crave.sh -o get_crave.sh
-          fi
-          bash get_crave.sh
-          
-          # Dynamically find crave wherever get_crave.sh extracted it
-          CRAVE_PATH=$(find $HOME . -name crave -type f 2>/dev/null | head -n 1)
-          
-          sudo mkdir -p /usr/local/bin
-          sudo cp "$CRAVE_PATH" /usr/local/bin/crave
-          sudo chmod +x /usr/local/bin/crave
+          curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
+          echo "$HOME/bin" >> $GITHUB_PATH
 
       - name: Verify Crave Installation
         run: |
