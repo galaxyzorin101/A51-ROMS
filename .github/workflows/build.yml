@@ -18,8 +18,10 @@ jobs:
             curl -sL https://raw.githubusercontent.com/accupara/crave/main/get_crave.sh -o get_crave.sh
           fi
           bash get_crave.sh
-          sudo cp $HOME/.bin/crave /usr/local/bin/crave 2>/dev/null || true
+          sudo mkdir -p /usr/local/bin
+          sudo cp $HOME/.bin/crave /usr/local/bin/crave
           sudo chmod +x /usr/local/bin/crave
+          sudo chmod +x $HOME/.bin/crave
 
       - name: Verify Crave Installation
         run: |
