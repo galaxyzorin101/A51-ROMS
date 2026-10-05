@@ -24,7 +24,7 @@ jobs:
           
           sudo chmod +x /usr/local/bin/crave
 
-      - name: Authenticate & Build crDroid 16.0
+      - name: Authenticate & Build crDroid (Android 16)
         env:
           CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
         run: |
@@ -34,8 +34,8 @@ jobs:
           git remote remove origin || true
           git remote add origin https://github.com/accupara/los23.2.git
 
-          # Initialize crDroid 16.0, fetch local manifest, purge extraneous device trees, lunch and build
-          crave -c crave.conf run --no-patch -- "rm -rf .repo/local_manifests && repo init -u https://github.com/crdroidandroid/android.git -b 16.0 --git-lfs && git clone https://github.com/Exynos9611Development/local_manifests.git -b lineage-23.2 .repo/local_manifests && /opt/crave/resync.sh && rm -rf device/samsung/f41 device/samsung/m31s device/samsung/m31 device/samsung/m21 vendor/samsung/f41 vendor/samsung/m31s vendor/samsung/m31 vendor/samsung/m21 && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
+          # Target crDroid 12.0 (Android 16), fetch lineage-23.2 trees, purge extra devices, and build a51
+          crave -c crave.conf run --no-patch -- "rm -rf .repo/local_manifests && repo init -u https://github.com/crdroidandroid/android.git -b 12.0 --git-lfs && git clone https://github.com/Exynos9611Development/local_manifests.git -b lineage-23.2 .repo/local_manifests && /opt/crave/resync.sh && rm -rf device/samsung/f41 device/samsung/m31s device/samsung/m31 device/samsung/m21 vendor/samsung/f41 vendor/samsung/m31s vendor/samsung/m31 vendor/samsung/m21 && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
 
       - name: Pull ROM Zip from Crave
         env:
