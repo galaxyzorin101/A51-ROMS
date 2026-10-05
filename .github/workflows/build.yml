@@ -6,6 +6,7 @@ on:
 jobs:
   crave-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 500
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
