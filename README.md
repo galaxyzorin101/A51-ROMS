@@ -34,5 +34,6 @@
 
 1. **Initialize PBRP Manifest:**
    ```bash
-   repo init -u [https://github.com/PitchBlackRecoveryProject/manifest_pb](https://github.com/PitchBlackRecoveryProject/manifest_pb) -b android-11.0
+   repo init -u [https://github.com/galaxyzorin101/A51-ROMS/tree/PitchBlack-Recovery-A51](https://github.com/galaxyzorin101/A51-ROMS/tree/PitchBlack-Recovery-A51) -b android-11.0
    repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
+ this command is not yet clarfied due to no source code yet.
