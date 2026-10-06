@@ -6,7 +6,7 @@ on:
 jobs:
   crave-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 410
+    timeout-minutes: 360
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -36,7 +36,6 @@ jobs:
           git remote remove origin || true
           git remote add origin https://github.com/accupara/los23.2.git
 
-          
           crave -c crave.conf --verbose run --no-patch -- "git config --global user.name 'build' && git config --global user.email 'build@local' && rm -rf .repo/local_manifests && mkdir -p .repo/local_manifests && echo '<?xml version=\"1.0\" encoding=\"UTF-8\"?>
           <manifest>
             <remote name=\"Development\" fetch=\"https://github.com/Exynos9611Development/\" revision=\"lineage-23.2\" />
