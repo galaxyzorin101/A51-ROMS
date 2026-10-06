@@ -6,7 +6,7 @@ on:
 jobs:
   crave-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 500
+    timeout-minutes: 410
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -26,6 +26,7 @@ jobs:
           sudo chmod +x /usr/local/bin/crave
 
       - name: Authenticate & Build crDroid 16.0 (A51 Only)
+        timeout-minutes: 360
         env:
           CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
         run: |
@@ -35,8 +36,8 @@ jobs:
           git remote remove origin || true
           git remote add origin https://github.com/accupara/los23.2.git
 
-          # Write manifest creation and build script into a clean bash wrapper
-          crave -c crave.conf run --no-patch -- "rm -rf .repo/local_manifests && mkdir -p .repo/local_manifests && echo '<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+          # Execute crave with non-interactive flags and verbose logging
+          crave -c crave.conf --verbose run --no-patch -- "git config --global user.name 'build' && git config --global user.email 'build@local' && rm -rf .repo/local_manifests && mkdir -p .repo/local_manifests && echo '<?xml version=\"1.0\" encoding=\"UTF-8\"?>
           <manifest>
             <remote name=\"Development\" fetch=\"https://github.com/Exynos9611Development/\" revision=\"lineage-23.2\" />
             <remote name=\"los\" fetch=\"https://github.com/LineageOS/\" revision=\"lineage-23.2\" />
@@ -62,7 +63,7 @@ jobs:
 
             <project path=\"vendor/samsung/universal9611-common\" name=\"android_vendor_samsung_universal9611-common\" remote=\"Development\" clone-depth=\"1\" />
             <project path=\"vendor/samsung/a51\" name=\"android_vendor_samsung_a51\" remote=\"Development\" clone-depth=\"1\" />
-          </manifest>' > .repo/local_manifests/a51.xml && repo init -u https://github.com/crdroidandroid/android.git -b 16.0 --git-lfs && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
+          </manifest>' > .repo/local_manifests/a51.xml && repo init -u https://github.com/crdroidandroid/android.git -b 16.0 --git-lfs --no-repo-verify && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
 
       - name: Pull ROM Zip from Crave
         env:
