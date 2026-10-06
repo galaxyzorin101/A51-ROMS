@@ -62,7 +62,7 @@ jobs:
 
             <project path=\"vendor/samsung/universal9611-common\" name=\"android_vendor_samsung_universal9611-common\" remote=\"Development\" clone-depth=\"1\" />
             <project path=\"vendor/samsung/a51\" name=\"android_vendor_samsung_a51\" remote=\"Development\" clone-depth=\"1\" />
-          </manifest>' > .repo/local_manifests/a51.xml && repo init -u https://github.com/crdroidandroid/android.git -b 16.0 --git-lfs --no-repo-verify && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51-userdebug && mka bacon"
+          </manifest>' > .repo/local_manifests/a51.xml && repo init -u https://github.com/crdroidandroid/android.git -b 16.0 --git-lfs --no-repo-verify && /opt/crave/resync.sh && source build/envsetup.sh && lunch crdroid_a51 userdebug && mka bacon 2>&1 | tee build.log"
 
       - name: Pull ROM Zip from Crave
         env:
