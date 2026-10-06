@@ -1,4 +1,4 @@
-name: Build crDroid for Galaxy A51
+name: Build Evolution X for Galaxy A51
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
           done
           sudo chmod +x /usr/local/bin/crave
 
-      - name: Authenticate & Build crDroid 16.0 (A51)
+      - name: Authenticate & Build Evolution X (A51)
         timeout-minutes: 360
         env:
           CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
@@ -69,11 +69,12 @@ jobs:
               <project path=\"vendor/samsung/universal9611-common\" name=\"android_vendor_samsung_universal9611-common\" remote=\"Development\" clone-depth=\"1\" />
               <project path=\"vendor/samsung/a51\" name=\"android_vendor_samsung_a51\" remote=\"Development\" clone-depth=\"1\" />
             </manifest>' > .repo/local_manifests/a51.xml &&
-            repo init -u https://github.com/crdroidandroid/android.git -b 16.0 --git-lfs --no-repo-verify &&
+            repo init -u https://github.com/Evolution-X/manifest.git -b vic --git-lfs --no-repo-verify &&
             /opt/crave/resync.sh &&
+            [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk && sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk || true &&
             source build/envsetup.sh &&
-            lunch crdroid_a51 userdebug &&
-            mka bacon 2>&1 | tee build.log
+            lunch evo_a51 userdebug &&
+            mka evo 2>&1 | tee build.log
           "
 
       - name: Pull ROM Zip from Crave
@@ -85,5 +86,5 @@ jobs:
       - name: Upload ROM Artifact to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: crDroid-Galaxy-A51
+          name: EvolutionX-Galaxy-A51
           path: "*.zip"
