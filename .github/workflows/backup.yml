@@ -1,4 +1,4 @@
-name: Build Evolution X for Galaxy A51
+name: Build Evolution X for Galaxy A51 2
 
 on:
   workflow_dispatch:
