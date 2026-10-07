@@ -15,7 +15,7 @@ jobs:
         run: |
           sudo mkdir -p /usr/local/bin
           curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
-          for loc in $HOME/bin/crave $HOME/.bin/crave ./crave; do
+          for loc in $HOME/bin/crave$HOME/.bin/crave ./crave; do
             if [ -f "$loc" ]; then
               sudo cp "$loc" /usr/local/bin/crave
               break
@@ -63,28 +63,4 @@ jobs:
               <project path=\"kernel/samsung/universal9611\" name=\"android_kernel_samsung_universal9611\" remote=\"Development\" revision=\"AOSP\" clone-depth=\"1\" />
 
               <project path=\"device/samsung/universal9611-common\" name=\"android_device_samsung_universal9611-common\" remote=\"Development\" />
-              <project path=\"device/samsung_slsi/sepolicy\" name=\"android_device_samsung_slsi_sepolicy\" remote=\"los\" />
-              <project path=\"device/samsung/a51\" name=\"android_device_samsung_a51\" remote=\"Development\" />
-
-              <project path=\"vendor/samsung/universal9611-common\" name=\"android_vendor_samsung_universal9611-common\" remote=\"Development\" clone-depth=\"1\" />
-              <project path=\"vendor/samsung/a51\" name=\"android_vendor_samsung_a51\" remote=\"Development\" clone-depth=\"1\" />
-            </manifest>' > .repo/local_manifests/a51.xml &&
-            repo init -u https://github.com/Evolution-X/manifest.git -b vic --git-lfs --no-repo-verify &&
-            /opt/crave/resync.sh &&
-            [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk && sed -i 's/vendor\/lineage/vendor\/evo/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
-            source build/envsetup.sh &&
-            lunch evo_a51 userdebug &&
-            mka evo 2>&1 | tee build.log
-          "
-
-      - name: Pull ROM Zip from Crave
-        env:
-          CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
-        run: |
-          crave -c crave.conf pull out/target/product/a51/*.zip .
-
-      - name: Upload ROM Artifact to GitHub
-        uses: actions/upload-artifact@v4
-        with:
-          name: EvolutionX-Galaxy-A51
-          path: "*.zip"
+              <project path=\"device/
