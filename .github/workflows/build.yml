@@ -69,11 +69,11 @@ jobs:
               <project path=\"vendor/samsung/universal9611-common\" name=\"android_vendor_samsung_universal9611-common\" remote=\"Development\" clone-depth=\"1\" />
               <project path=\"vendor/samsung/a51\" name=\"android_vendor_samsung_a51\" remote=\"Development\" clone-depth=\"1\" />
             </manifest>' > .repo/local_manifests/a51.xml &&
-            repo init -u https://github.com/Evolution-X/manifest.git -b vic --git-lfs --no-repo-verify &&
+            repo init -u https://github.com/Evolution-X/manifest.git -b bka --git-lfs --no-repo-verify &&
             /opt/crave/resync.sh &&
             [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk && sed -i 's/vendor\/lineage/vendor\/evo/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
             source build/envsetup.sh &&
-            lunch evo_a51-userdebug &&
+            lunch evo_a51-bp4a-userdebug &&
             mka evo 2>&1 | tee build.log
           "
 
