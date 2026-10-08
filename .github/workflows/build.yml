@@ -73,7 +73,7 @@ jobs:
             /opt/crave/resync.sh &&
             [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk && sed -i 's/vendor\/lineage/vendor\/evo/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
             source build/envsetup.sh &&
-            lunch evo_a51 userdebug &&
+            lunch evo_a51-userdebug &&
             mka evo 2>&1 | tee build.log
           "
 
