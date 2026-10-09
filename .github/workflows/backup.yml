@@ -1,1 +1,91 @@
+name: Build Evolution X for Galaxy A51 2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  crave-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Crave CLI
+        run: |
+          sudo mkdir -p /usr/local/bin
+          curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
+          for loc in $HOME/bin/crave $HOME/.bin/crave ./crave; do
+            if [ -f "$loc" ]; then
+              sudo cp "$loc" /usr/local/bin/crave
+              break
+            fi
+          done
+          sudo chmod +x /usr/local/bin/crave
+
+      - name: Authenticate & Build Evolution X (A51)
+        timeout-minutes: 360
+        env:
+          CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
+        run: |
+          echo "$CRAVE_CONF_DATA" > crave.conf
+          echo "$CRAVE_CONF_DATA" > $HOME/crave.conf
+
+          git remote remove origin || true
+          git remote add origin https://github.com/accupara/los23.2.git
+
+          crave -c crave.conf --verbose run --no-patch -- "
+            git config --global user.name 'build' &&
+            git config --global user.email 'build@local' &&
+            export BUILD_USERNAME=android-build &&
+            export BUILD_HOSTNAME=crave &&
+            export USE_CCACHE=0 &&
+            rm -rf .repo/local_manifests &&
+            mkdir -p .repo/local_manifests &&
+            echo '<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+            <manifest>
+              <remote name=\"Development\" fetch=\"https://github.com/Exynos9611Development/\" revision=\"lineage-23.2\" />
+              <remote name=\"los\" fetch=\"https://github.com/LineageOS/\" revision=\"lineage-23.2\" />
+
+              <project path=\"hardware/samsung\" name=\"android_hardware_samsung\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi/libbt\" name=\"android_hardware_samsung_slsi_libbt\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi/nfc\" name=\"android_hardware_samsung_slsi_nfc\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi/scsc_wifibt/wifi_hal\" name=\"android_hardware_samsung_slsi_scsc_wifibt_wifi_hal\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi/scsc_wifibt/wpa_supplicant_lib\" name=\"android_hardware_samsung_slsi_scsc_wifibt_wpa_supplicant_lib\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi-linaro/codec2\" name=\"android_hardware_samsung_slsi-linaro_codec2\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi-linaro/config\" name=\"android_hardware_samsung_slsi-linaro_config\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi-linaro/exynos\" name=\"android_hardware_samsung_slsi-linaro_exynos\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi-linaro/exynos5\" name=\"android_hardware_samsung_slsi-linaro_exynos5\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi-linaro/graphics\" name=\"android_hardware_samsung_slsi-linaro_graphics\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi-linaro/openmax\" name=\"android_hardware_samsung_slsi-linaro_openmax\" remote=\"los\" clone-depth=\"1\" />
+              <project path=\"hardware/samsung_slsi-linaro/interfaces\" name=\"android_hardware_samsung_slsi-linaro_interfaces\" remote=\"los\" clone-depth=\"1\" />
+
+              <project path=\"kernel/samsung/universal9611\" name=\"android_kernel_samsung_universal9611\" remote=\"Development\" revision=\"AOSP\" clone-depth=\"1\" />
+
+              <project path=\"device/samsung/universal9611-common\" name=\"android_device_samsung_universal9611-common\" remote=\"Development\" />
+              <project path=\"device/samsung_slsi/sepolicy\" name=\"android_device_samsung_slsi_sepolicy\" remote=\"los\" />
+              <project path=\"device/samsung/a51\" name=\"android_device_samsung_a51\" remote=\"Development\" />
+
+              <project path=\"vendor/samsung/universal9611-common\" name=\"android_vendor_samsung_universal9611-common\" remote=\"Development\" clone-depth=\"1\" />
+              <project path=\"vendor/samsung/a51\" name=\"android_vendor_samsung_a51\" remote=\"Development\" clone-depth=\"1\" />
+            </manifest>' > .repo/local_manifests/a51.xml &&
+            repo init -u https://github.com/Evolution-X/manifest.git -b vic --git-lfs --no-repo-verify &&
+            /opt/crave/resync.sh &&
+            [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk && sed -i 's/vendor\/lineage/vendor\/evo/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
+            source build/envsetup.sh &&
+            lunch evo_a51 userdebug &&
+            mka evo 2>&1 | tee build.log
+          "
+
+      - name: Pull ROM Zip from Crave
+        env:
+          CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
+        run: |
+          crave -c crave.conf pull out/target/product/a51/*.zip .
+
+      - name: Upload ROM Artifact to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: EvolutionX-Galaxy-A51
+          path: "*.zip"
 
