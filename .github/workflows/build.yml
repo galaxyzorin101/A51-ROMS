@@ -3,6 +3,9 @@ name: Build Evolution X for Galaxy A51
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   crave-build:
     runs-on: ubuntu-latest
@@ -24,7 +27,7 @@ jobs:
           sudo chmod +x /usr/local/bin/crave
 
       - name: Authenticate & Build Evolution X (A51)
-        timeout-minutes: 360
+        timeout-minutes: 340
         env:
           CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
         run: |
@@ -71,20 +74,39 @@ jobs:
             </manifest>' > .repo/local_manifests/a51.xml &&
             repo init -u https://github.com/Evolution-X/manifest.git -b bka --git-lfs --no-repo-verify &&
             /opt/crave/resync.sh &&
-            [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk && sed -i 's/vendor\/lineage/vendor\/evo/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk && sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
+            [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk &&
+            sed -i 's/vendor\/lineage/vendor\/evo/g' device/samsung/a51/evo_a51.mk &&
+            sed -i 's/common_full_phone.mk/common.mk/g' device/samsung/a51/evo_a51.mk &&
+            sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk &&
+            sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
             source build/envsetup.sh &&
             lunch evo_a51-bp4a-userdebug &&
             mka evo 2>&1 | tee build.log
           "
 
-      - name: Pull ROM Zip from Crave
+      - name: Pull Build Artifacts and Logs from Crave
+        if: always()
         env:
           CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
         run: |
-          crave -c crave.conf pull out/target/product/a51/*.zip .
+          crave -c crave.conf pull out/target/product/a51/*.zip . || true
+          crave -c crave.conf pull build.log . || true
 
-      - name: Upload ROM Artifact to GitHub
+      - name: Push Build Log to GitHub Branch
+        if: always()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B build-logs
+          [ -f build.log ] && git add -f build.log
+          git commit -m "Upload build logs [skip ci]" || exit 0
+          git push origin build-logs --force
+
+      - name: Upload ROM Artifact to GitHub Actions
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: EvolutionX-Galaxy-A51
-          path: "*.zip"
+          name: EvolutionX-Galaxy-A51-Build
+          path: |
+            *.zip
+            build.log
