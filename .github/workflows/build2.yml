@@ -88,3 +88,4 @@ jobs:
         with:
           name: EvolutionX-Galaxy-A51
           path: "*.zip"
+
