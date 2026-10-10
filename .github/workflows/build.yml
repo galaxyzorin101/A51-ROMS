@@ -74,11 +74,43 @@ jobs:
             </manifest>' > .repo/local_manifests/a51.xml &&
             repo init -u https://github.com/Evolution-X/manifest.git -b bka --git-lfs --no-repo-verify &&
             /opt/crave/resync.sh &&
+            
+            # Setup device makefile modifications and patches
             [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk &&
-            sed -i 's/vendor\/lineage/vendor\/evo/g' device/samsung/a51/evo_a51.mk &&
-            sed -i 's/common_full_phone.mk/common.mk/g' device/samsung/a51/evo_a51.mk &&
+            sed -i 's/vendor\/lineage/vendor\/evolution/g' device/samsung/a51/evo_a51.mk &&
             sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk &&
             sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
+
+            # Inject IMS & VoLTE configurations into evo_a51.mk
+            echo '
+            # IMS & VoLTE Settings
+            PRODUCT_PACKAGES += ImsService TeleService
+            PRODUCT_PROPERTY_OVERRIDES += \\
+                persist.vendor.radio.ims_available=1 \\
+                persist.vendor.radio.ims.disabled=0 \\
+                persist.dbg.ims_volte_enable=1 \\
+                persist.dbg.volte_avail_ovr=1 \\
+                persist.dbg.vt_avail_ovr=1
+            ' >> device/samsung/a51/evo_a51.mk &&
+
+            # Download and integrate KernelSU Next Manager APK as a system app
+            mkdir -p device/samsung/a51/prebuilts/app/KernelSU &&
+            KSUN_URL=\$(curl -s https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest | grep browser_download_url | grep -i \"release.apk\" | head -n 1 | cut -d '\"' -f 4) &&
+            [ -z \"\$KSUN_URL\" ] && KSUN_URL=\"https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.1/KernelSU_Next_v3.4.1_33333-release.apk\" &&
+            curl -sL -o device/samsung/a51/prebuilts/app/KernelSU/KernelSU.apk \"\$KSUN_URL\" &&
+            echo '
+            LOCAL_PATH := $(call my-dir)
+            include $(CLEAR_VARS)
+            LOCAL_MODULE := KernelSU
+            LOCAL_MODULE_TAGS := optional
+            LOCAL_MODULE_CLASS := APPS
+            LOCAL_CERTIFICATE := PLATFORM
+            LOCAL_SRC_FILES := KernelSU.apk
+            LOCAL_MODULE_SUFFIX := $$(COMMON_ANDROID_PACKAGE_SUFFIX)
+            include $(BUILD_PREBUILT)
+            ' > device/samsung/a51/prebuilts/app/KernelSU/Android.mk &&
+            echo 'PRODUCT_PACKAGES += KernelSU' >> device/samsung/a51/evo_a51.mk &&
+
             source build/envsetup.sh &&
             lunch evo_a51-bp4a-userdebug &&
             mka evo 2>&1 | tee build.log
@@ -91,6 +123,19 @@ jobs:
         run: |
           crave -c crave.conf pull out/target/product/a51/*.zip . || true
           crave -c crave.conf pull build.log . || true
+          crave -c crave.conf pull device/samsung/a51/ . || true
+          crave -c crave.conf pull .repo/local_manifests/a51.xml . || true
+
+      - name: Push Device Sources & Local Manifest to GitHub Branch
+        if: always()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B a51-evo-baklava-source
+          [ -d a51 ] && git add -f a51/
+          [ -f a51.xml ] && git add -f a51.xml
+          git commit -m "Upload patched A51 device tree & local manifest [skip ci]" || exit 0
+          git push origin a51-evo-baklava-source --force
 
       - name: Push Build Log to GitHub Branch
         if: always()
@@ -110,4 +155,3 @@ jobs:
           path: |
             *.zip
             build.log
-
