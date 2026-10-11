@@ -75,11 +75,18 @@ jobs:
             repo init -u https://github.com/Evolution-X/manifest.git -b bka --git-lfs --no-repo-verify &&
             /opt/crave/resync.sh &&
             
-            # Setup device makefile modifications and patches
-            [ -f device/samsung/a51/lineage_a51.mk ] && cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk &&
-            sed -i 's/vendor\/lineage/vendor\/evolution/g' device/samsung/a51/evo_a51.mk &&
-            sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk &&
-            sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
+            # Debug: List device/samsung/a51 contents
+            echo '=== Contents of device/samsung/a51 ===' &&
+            ls -la device/samsung/a51 || true &&
+
+            # Dynamically find and copy device makefile
+            BASE_MK=\$(find device/samsung/a51 -maxdepth 1 -name '*a51*.mk' | head -n 1) &&
+            if [ -n \"\$BASE_MK\" ]; then
+                cp \"\$BASE_MK\" device/samsung/a51/evo_a51.mk
+                sed -i 's/vendor\/lineage/vendor\/evolution/g' device/samsung/a51/evo_a51.mk
+                sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk
+            fi &&
+            [ -f device/samsung/a51/AndroidProducts.mk ] && sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
 
             # Inject IMS & VoLTE configurations into evo_a51.mk
             echo '
@@ -95,7 +102,7 @@ jobs:
 
             # Download and integrate KernelSU Next Manager APK as a system app
             mkdir -p device/samsung/a51/prebuilts/app/KernelSU &&
-            KSUN_URL=\$(curl -s https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest | grep browser_download_url | grep -i \"release.apk\" | head -n 1 | cut -d '\"' -f 4) &&
+            KSUN_URL=\$(curl -s https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest | grep browser_download_url | grep -i 'release.apk' | head -n 1 | cut -d '\"' -f 4) &&
             [ -z \"\$KSUN_URL\" ] && KSUN_URL=\"https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.1/KernelSU_Next_v3.4.1_33333-release.apk\" &&
             curl -sL -o device/samsung/a51/prebuilts/app/KernelSU/KernelSU.apk \"\$KSUN_URL\" &&
             echo '
