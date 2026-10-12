@@ -75,11 +75,10 @@ jobs:
             repo init -u https://github.com/Evolution-X/manifest.git -b bka --git-lfs --no-repo-verify &&
             /opt/crave/resync.sh &&
             
-            # Setup device makefile modifications and patches
-            BASE_MK=\$(find device/samsung/a51 -maxdepth 1 -name '*a51*.mk' | head -n 1) &&
-            if [ -n \"\$BASE_MK\" ]; then
-                cp \"\$BASE_MK\" device/samsung/a51/evo_a51.mk
-                sed -i 's/vendor\/lineage/vendor\/evolution/g' device/samsung/a51/evo_a51.mk
+            # Setup device makefile modifications and patches safely
+            if [ -f device/samsung/a51/lineage_a51.mk ] && [ ! -f device/samsung/a51/evo_a51.mk ]; then
+                cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk &&
+                sed -i 's/vendor\/lineage/vendor\/evolution/g' device/samsung/a51/evo_a51.mk &&
                 sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk
             fi &&
             [ -f device/samsung/a51/AndroidProducts.mk ] && sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true &&
@@ -114,27 +113,32 @@ jobs:
             ' > device/samsung/a51/prebuilts/app/KernelSU/Android.mk &&
             echo 'PRODUCT_PACKAGES += KernelSU' >> device/samsung/a51/evo_a51.mk &&
 
-            # Push Patched Sources to GitHub from inside Crave (so anyone can clone)
-            cd device/samsung/a51 &&
-            git checkout -B a51-evo-baklava-source &&
-            git add . &&
-            git commit -m \"Add Evolution X patches, IMS, and KernelSU Next [skip ci]\" || true &&
-            git push https://x-access-token:\${GITHUB_TOKEN}@github.com/accupara/los23.2.git a51-evo-baklava-source --force || true &&
-            cd ../../.. &&
-
             # Build ROM
             source build/envsetup.sh &&
             lunch evo_a51-bp4a-userdebug &&
             mka evo 2>&1 | tee build.log
           "
 
-      - name: Pull Build Artifacts and Logs from Crave
+      - name: Pull Build Artifacts, Logs, and Sources from Crave
         if: always()
         env:
           CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
         run: |
           crave -c crave.conf pull out/target/product/a51/*.zip . || true
           crave -c crave.conf pull build.log . || true
+          crave -c crave.conf pull device/samsung/a51/ . || true
+          crave -c crave.conf pull .repo/local_manifests/a51.xml . || true
+
+      - name: Push Patched Sources to GitHub Branch
+        if: always()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B a51-evo-baklava-source
+          [ -d a51 ] && git add -f a51/
+          [ -f a51.xml ] && git add -f a51.xml
+          git commit -m "Add Evolution X patches, IMS, and KernelSU Next [skip ci]" || exit 0
+          git push origin a51-evo-baklava-source --force
 
       - name: Push Build Log to GitHub Branch
         if: always()
