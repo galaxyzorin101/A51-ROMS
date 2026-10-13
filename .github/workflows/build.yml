@@ -26,10 +26,19 @@ jobs:
           done
           sudo chmod +x /usr/local/bin/crave
 
-      - name: Create Local build.sh Script
+      - name: Authenticate & Build Evolution X (A51)
+        timeout-minutes: 340
+        env:
+          CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat << 'BUILD_EOF' > run_build.sh
-          #!/usr/bin/env bash
+          echo "$CRAVE_CONF_DATA" > crave.conf
+          echo "$CRAVE_CONF_DATA" > $HOME/crave.conf
+
+          git remote remove origin || true
+          git remote add origin https://github.com/accupara/los23.2.git
+
+          crave -c crave.conf --verbose run --no-patch -- bash -s << 'EOF'
           set -e
 
           git config --global user.name 'build'
@@ -74,8 +83,9 @@ jobs:
           repo init -u https://github.com/Evolution-X/manifest.git -b bka --git-lfs --no-repo-verify
           /opt/crave/resync.sh
 
-          if [ -f device/samsung/a51/lineage_a51.mk ] && [ ! -f device/samsung/a51/evo_a51.mk ]; then
-              cp device/samsung/a51/lineage_a51.mk device/samsung/a51/evo_a51.mk
+          BASE_MK=$(find device/samsung/a51 -maxdepth 1 -name '*a51*.mk' | head -n 1)
+          if [ -n "$BASE_MK" ] && [ ! -f device/samsung/a51/evo_a51.mk ]; then
+              cp "$BASE_MK" device/samsung/a51/evo_a51.mk
               sed -i 's/vendor\/lineage/vendor\/evolution/g' device/samsung/a51/evo_a51.mk
               sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk
           fi
@@ -115,21 +125,7 @@ jobs:
           source build/envsetup.sh
           lunch evo_a51-bp4a-userdebug
           mka evo 2>&1 | tee build.log
-          BUILD_EOF
-
-      - name: Authenticate & Build Evolution X (A51)
-        timeout-minutes: 340
-        env:
-          CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
-        run: |
-          echo "$CRAVE_CONF_DATA" > crave.conf
-          echo "$CRAVE_CONF_DATA" > $HOME/crave.conf
-
-          git remote remove origin || true
-          git remote add origin https://github.com/accupara/los23.2.git
-
-          # Execute via Crave by piping standard input directly into bash
-          crave -c crave.conf --verbose run --no-patch -- bash -s < run_build.sh
+          EOF
 
       - name: Pull Build Artifacts, Logs, and Sources from Crave
         if: always()
