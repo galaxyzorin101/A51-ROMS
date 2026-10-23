@@ -6,7 +6,7 @@ git config --global user.name 'build'
 git config --global user.email 'build@local'
 export BUILD_USERNAME=android-build
 export BUILD_HOSTNAME=crave
-export USE_CCACHE=0
+export USE_CCACHE=1
 
 echo "=== Writing local manifest for Galaxy A51 ==="
 rm -rf .repo/local_manifests
