@@ -1,20 +1,17 @@
-name: Build Evolution X for Galaxy A51
+name: Build Evolution X for Galaxy A51 (Crave)
 
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   crave-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Crave CLI
+      - name: Install Crave CLI
         run: |
           sudo mkdir -p /usr/local/bin
           curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
@@ -26,26 +23,34 @@ jobs:
           done
           sudo chmod +x /usr/local/bin/crave
 
-      - name: Authenticate & Build Evolution X (A51)
-        timeout-minutes: 340
+      - name: Configure Crave Authentication & Remote
         env:
-          CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF_DATA }}
         run: |
           echo "$CRAVE_CONF_DATA" > crave.conf
           echo "$CRAVE_CONF_DATA" > $HOME/crave.conf
 
+          git init || true
           git remote remove origin || true
           git remote add origin https://github.com/accupara/los23.2.git
 
+      - name: Execute Crave Build
+        run: |
           crave -c crave.conf --verbose run --no-patch -- bash -s << 'EOF'
-          set -e
+          set -eo pipefail
 
-          git config --global user.name 'build'
-          git config --global user.email 'build@local'
+          export EVO_BRANCH="cnb"
           export BUILD_USERNAME=android-build
           export BUILD_HOSTNAME=crave
-          export USE_CCACHE=0
+          export USE_CCACHE=1
+
+          git config --global user.name "build"
+          git config --global user.email "build@local"
+
+          echo "=========================================="
+          echo " STEP 1: Setting up Manifests & Syncing"
+          echo "=========================================="
+          repo init -u https://github.com/Evolution-X/manifest.git -b "$EVO_BRANCH" --git-lfs --no-repo-verify
 
           rm -rf .repo/local_manifests
           mkdir -p .repo/local_manifests
@@ -53,8 +58,8 @@ jobs:
           cat << 'MANIFEST_EOF' > .repo/local_manifests/a51.xml
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <remote name="Development" fetch="https://github.com/Exynos9611Development/" revision="lineage-23.2" />
-            <remote name="los" fetch="https://github.com/LineageOS/" revision="lineage-23.2" />
+            <remote name="Development" fetch="https://github.com/Exynos9611Development/" revision="lineage-24" />
+            <remote name="los" fetch="https://github.com/LineageOS/" revision="lineage-24" />
 
             <project path="hardware/samsung" name="android_hardware_samsung" remote="los" clone-depth="1" />
             <project path="hardware/samsung_slsi/libbt" name="android_hardware_samsung_slsi_libbt" remote="los" clone-depth="1" />
@@ -80,17 +85,20 @@ jobs:
           </manifest>
           MANIFEST_EOF
 
-          repo init -u https://github.com/Evolution-X/manifest.git -b bka --git-lfs --no-repo-verify
-          /opt/crave/resync.sh
+          crave clone || true
 
+          echo "=========================================="
+          echo " STEP 2: Patching Device Trees & KernelSU"
+          echo "=========================================="
           BASE_MK=$(find device/samsung/a51 -maxdepth 1 -name '*a51*.mk' | head -n 1)
-          if [ -n "$BASE_MK" ] && [ ! -f device/samsung/a51/evo_a51.mk ]; then
+          if [ -n "$BASE_MK" ]; then
               cp "$BASE_MK" device/samsung/a51/evo_a51.mk
               sed -i 's/vendor\/lineage/vendor\/evolution/g' device/samsung/a51/evo_a51.mk
               sed -i 's/lineage_/evo_/g' device/samsung/a51/evo_a51.mk
           fi
           [ -f device/samsung/a51/AndroidProducts.mk ] && sed -i 's/lineage_a51/evo_a51/g' device/samsung/a51/AndroidProducts.mk || true
 
+          # Append IMS & VoLTE Settings
           cat << 'IMS_EOF' >> device/samsung/a51/evo_a51.mk
 
           # IMS & VoLTE Settings
@@ -103,12 +111,13 @@ jobs:
               persist.dbg.vt_avail_ovr=1
           IMS_EOF
 
+          # Pull KernelSU Next App
           mkdir -p device/samsung/a51/prebuilts/app/KernelSU
           KSUN_URL=$(curl -s https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest | grep browser_download_url | grep -i 'release.apk' | head -n 1 | cut -d '"' -f 4)
           [ -z "$KSUN_URL" ] && KSUN_URL="https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.1/KernelSU_Next_v3.4.1_33333-release.apk"
           curl -sL -o device/samsung/a51/prebuilts/app/KernelSU/KernelSU.apk "$KSUN_URL"
 
-          cat << 'KSU_EOF' > device/samsung/a51/prebuilts/app/KernelSU/Android.mk
+          cat << 'ANDROID_MK_EOF' > device/samsung/a51/prebuilts/app/KernelSU/Android.mk
           LOCAL_PATH := $(call my-dir)
           include $(CLEAR_VARS)
           LOCAL_MODULE := KernelSU
@@ -118,51 +127,24 @@ jobs:
           LOCAL_SRC_FILES := KernelSU.apk
           LOCAL_MODULE_SUFFIX := $(COMMON_ANDROID_PACKAGE_SUFFIX)
           include $(BUILD_PREBUILT)
-          KSU_EOF
+          ANDROID_MK_EOF
 
           echo 'PRODUCT_PACKAGES += KernelSU' >> device/samsung/a51/evo_a51.mk
 
+          echo "=========================================="
+          echo " STEP 3: Compiling Evolution X"
+          echo "=========================================="
           source build/envsetup.sh
-          lunch evo_a51-bp4a-userdebug
-          mka evo 2>&1 | tee build.log
+          lunch evo_a51-cp2a-userdebug || lunch evo_a51-userdebug
+          m evolution 2>&1 | tee build.log
           EOF
 
-      - name: Pull Build Artifacts, Logs, and Sources from Crave
-        if: always()
-        env:
-          CRAVE_CONF_DATA: ${{ secrets.CRAVE_CONF }}
+      - name: Pull Built ROM Artifacts
         run: |
-          crave -c crave.conf pull out/target/product/a51/*.zip . || true
-          crave -c crave.conf pull build.log . || true
-          crave -c crave.conf pull device/samsung/a51/ . || true
-          crave -c crave.conf pull .repo/local_manifests/a51.xml . || true
+          crave -c crave.conf pull out/target/product/a51/evo_a51*.zip . || true
 
-      - name: Push Patched Sources to GitHub Branch
-        if: always()
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B a51-evo-baklava-source
-          [ -d a51 ] && git add -f a51/
-          [ -f a51.xml ] && git add -f a51.xml
-          git commit -m "Add Evolution X patches, IMS, and KernelSU Next [skip ci]" || exit 0
-          git push origin a51-evo-baklava-source --force
-
-      - name: Push Build Log to GitHub Branch
-        if: always()
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B build-logs
-          [ -f build.log ] && git add -f build.log
-          git commit -m "Upload build logs [skip ci]" || exit 0
-          git push origin build-logs --force
-
-      - name: Upload ROM Artifact to GitHub Actions
-        if: always()
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: EvolutionX-Galaxy-A51-Build
-          path: |
-            *.zip
-            build.log
+          name: EvolutionX-A51-Zip
+          path: "*.zip"
