@@ -1,14 +1,11 @@
 #!/bin/bash
 # ==============================================================================
-# Evolution X 12 (Android 17) Automated Cloud Build Script for Samsung Galaxy A51 4G
-# Target Device: SM-A515F / SM-A515F/DS (a51)
-# Maintainer: GalaxyZorin101
-# Features: IMS/VoLTE, KernelSU Next, SkiaGL Smooth UI Optimizations
+# Part 1: Environment Setup, Source Sync & ROM Compilation
 # ==============================================================================
 
 set -e
 
-echo "=== [1/8] Installing System Dependencies & Google Repo Tool ==="
+echo "=== [1/8] Installing Dependencies & Google Repo Tool ==="
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt install -y \
@@ -16,13 +13,12 @@ sudo apt install -y \
     git-lfs gnupg gperf imagemagick lib32ncurses-dev lib32readline-dev \
     lib32z1-dev libelf-dev libgl1-mesa-dev libxml2-utils lz4 ncftp \
     ncurses-dev libncurses5 openjdk-17-jdk python-is-python3 python3 \
-    python3-pip rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+    python3-pip rsync schedtool squashfs-tools xsltproc zip zlib1g-dev gh
 
-# Install official Google repo tool
+# Install Google repo tool
 sudo curl -s https://storage.googleapis.com/git-repo-downloads/repo -o /usr/local/bin/repo
 sudo chmod a+rx /usr/local/bin/repo
 
-# Set git identity required by repo tool
 git config --global user.email "builds@galaxyzorin101.local" || true
 git config --global user.name "GalaxyZorin101" || true
 
@@ -33,14 +29,13 @@ if [ ! -f /swapfile ]; then
     sudo chmod 600 /swapfile
     sudo mkswap /swapfile
     sudo swapon /swapfile
-    echo "32GB Swap enabled successfully."
 fi
 
 WORK_DIR="/mnt/volume/evo"
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
-echo "=== [3/8] Initializing Evolution X Source Tree & Local Manifest ==="
+echo "=== [3/8] Initializing Evolution X Source Tree & Manifest ==="
 if [ ! -d ".repo" ]; then
     repo init -u https://github.com/Evolution-X/manifest.git -b cnb --git-lfs --no-repo-verify
 fi
@@ -80,26 +75,22 @@ EOF
 echo "=== [4/8] Syncing Repositories ==="
 repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
-echo "=== [5/8] Integrating KernelSU Next into Kernel Tree ==="
+echo "=== [5/8] Integrating KernelSU Next ==="
 KERNEL_DIR="kernel/samsung/universal9611"
 if [ -d "$KERNEL_DIR" ]; then
     if [ ! -d "$KERNEL_DIR/KernelSU-Next" ]; then
-        echo "Cloning KernelSU Next driver into Kernel..."
         curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s next
     fi
 fi
 
-echo "=== [6/8] Injecting VoLTE / IMS & SkiaGL Smooth UI Performance Overrides ==="
+echo "=== [6/8] Injecting IMS/VoLTE & SkiaGL Optimizations ==="
 COMMON_DEVICE_DIR="device/samsung/universal9611-common"
 PROP_FILE="$COMMON_DEVICE_DIR/system.prop"
 
 if [ -f "$PROP_FILE" ]; then
-    echo "Injecting IMS VoLTE properties and SkiaGL UI optimizations..."
     cat << 'EOF' >> "$PROP_FILE"
 
-# ==============================================================================
-# VoLTE / IMS & Telephony Property Overrides
-# ==============================================================================
+# VoLTE & IMS Overrides
 persist.vendor.ims.play_ringback_tone=1
 persist.vendor.radio.add_power_save=1
 persist.dbg.volte_avail_ovr=1
@@ -111,9 +102,7 @@ persist.radio.calls.on.ims=1
 persist.radio.jbims=1
 persist.radio.vrte_logic=1
 
-# ==============================================================================
-# SkiaGL & Smooth Screen Rendering Optimizations (Exynos 9611)
-# ==============================================================================
+# Smooth Screen & SkiaGL Rendering
 debug.hwui.renderer=skiagl
 debug.sf.latch_unsignaled=1
 persist.sys.scrollingcache=2
@@ -122,22 +111,11 @@ debug.cpurend.vsync=false
 EOF
 fi
 
-# Enable VoLTE availability in framework overlay config if present
-OVERLAY_CONFIG="$COMMON_DEVICE_DIR/overlay/frameworks/base/core/res/res/values/config.xml"
-if [ -f "$OVERLAY_CONFIG" ]; then
-    sed -i 's/<bool name="config_device_volte_available">false<\/bool>/<bool name="config_device_volte_available">true<\/bool>/g' "$OVERLAY_CONFIG" || true
-    sed -i 's/<bool name="config_device_vt_available">false<\/bool>/<bool name="config_device_vt_available">true<\/bool>/g' "$OVERLAY_CONFIG" || true
-    sed -i 's/<bool name="config_device_wfc_available">false<\/bool>/<bool name="config_device_wfc_available">true<\/bool>/g' "$OVERLAY_CONFIG" || true
-fi
-
 echo "=== [7/8] Injecting Device Branding & Maintainer Info ==="
 A51_DEVICE_DIR="device/samsung/a51"
-
 if [ -d "$A51_DEVICE_DIR" ]; then
     TARGET_MAKEFILE=$(find "$A51_DEVICE_DIR" -maxdepth 1 -name "*.mk" ! -name "Android.mk" ! -name "BoardConfig*.mk" | head -n 1)
-    
     if [ -n "$TARGET_MAKEFILE" ]; then
-        echo "Injecting branding into $TARGET_MAKEFILE..."
         sed -i '/EVO_BUILD_TYPE/d' "$TARGET_MAKEFILE"
         sed -i '/EVO_MAINTAINER/d' "$TARGET_MAKEFILE"
         sed -i '/PRODUCT_MODEL/d' "$TARGET_MAKEFILE"
@@ -145,7 +123,7 @@ if [ -d "$A51_DEVICE_DIR" ]; then
         
         cat << 'EOF' >> "$TARGET_MAKEFILE"
 
-# Custom Maintainer & Branding Injection
+# Custom Maintainer & Branding
 EVO_BUILD_TYPE := UNOFFICIAL
 EVO_MAINTAINER := GalaxyZorin101
 PRODUCT_BRAND := Samsung
@@ -154,18 +132,10 @@ EOF
     fi
 fi
 
-echo "=== [8/8] Environment Setup & ROM Compilation ==="
+echo "=== [8/8] Starting Compilation ==="
 source build/envsetup.sh
-
 LUNCH_TARGET=$(lunch 2>&1 | grep -oE '(evo|lineage)_a51-[a-z]+' | head -n 1 || echo "lineage_a51-userdebug")
-
-echo "Executing lunch command: lunch $LUNCH_TARGET"
 lunch "$LUNCH_TARGET"
-
-echo "Starting compilation (m evolution)..."
 m evolution -j$(nproc --all)
 
-echo "===================================================="
-echo " BUILD COMPLETE!"
-echo " Check output files in: out/target/product/a51/"
-echo "===================================================="
+echo "Compilation step complete! Run ./upload_to_github.sh when ready."
