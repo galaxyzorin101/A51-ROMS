@@ -3,7 +3,7 @@
 # Part 1: Environment Setup, Source Sync & ROM Compilation
 # ==============================================================================
 
-set -e
+set -e 
 
 echo "=== [1/8] Installing Dependencies & Google Repo Tool ==="
 sudo apt update -y
